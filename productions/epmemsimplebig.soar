@@ -1,0 +1,109 @@
+epmem -e
+epmem --set timers off
+
+sp {propose*init
+   (state <s> ^superstate nil)
+   -(<s> ^round-score <rs>)
+   -->
+   (<s> ^operator <o> + >)
+   (<o> ^name init)}
+
+sp {apply*init
+   (state <s> ^operator.name init)
+   -->
+   (<s> ^round-score <rs>)}
+
+sp {propose*new-game
+   (state <s> ^io.input-link.status end)
+   -->
+   (<s> ^operator <o> +)
+   (<o> ^name new-game)}
+
+sp {apply*new-game
+   (state <s> ^operator.name new-game
+              ^io (^output-link <ol>
+                   ^input-link <il>)
+              ^round-score <rs>)
+   (<il> ^round <r>
+         ^move-num <mn>)
+   -->
+   (<ol> ^command.name new-game)
+   (<rs> ^<r> <mn>)
+   (write (crlf) |starting a new game, round: | <r>)}
+
+sp {apply*new-game*remove
+:o-support
+(state <s> ^io (^input-link.status ok
+                ^output-link <ol>))
+(<ol> ^command <cmd>)
+(<cmd> ^status complete
+       ^name new-game)
+-->
+(<ol> ^command <cmd> -)
+(write (crlf) |removing new-game command|)}
+
+gp {propose*moves
+(state <s> ^io.input-link <il>)
+(<il> ^status ok
+      ^move-num <mn>)
+-->
+(<s> ^operator <o> + =)
+(<o> ^direction [left right up down])}
+
+sp {apply*move
+(state <s> ^operator.direction <dir>
+           ^io.output-link <ol>)
+-->
+(<ol> ^command.name move
+      ^move.direction <dir>)
+(write (crlf) |moving: | <dir>)}
+
+sp {apply*move*remove
+:o-support
+(state <s> ^io.output-link <ol>)
+(<ol> ^move <move>
+      ^command <cmd>)
+(<move> ^status complete)
+(<cmd> ^status complete)
+-->
+(<ol> ^move <move> -
+      ^command <cmd> -)
+(write (crlf) |removing move command|)}
+
+sp {propose*halt
+(state <s> ^io.input-link.round <r> > 4000)
+-->
+(<s> ^operator <o> + >)
+(<o> ^name halt)}
+
+sp {apply*halt
+(state <s> ^operator.name halt)
+-->
+(write |reached max rounds, halting|)
+(halt)}
+
+sp {propose*search
+   (state <s> ^impasse tie)
+   -->
+   (<s> ^operator <o> + =)
+   (<o> ^name search)
+   (write (crlf) |tie, proposing to handle|)}
+
+sp {apply*search
+   (state <s> ^operator.name search
+              ^superstate <ss>
+              ^epmem.command <ec>)
+   (<ss> ^io.input-link.board <b>)
+   -->
+   (<ec> ^query <q>)
+   (<q> ^io <io>)
+   (<io> ^input-link.board <b>
+         ^output-link.move <m>)}
+
+sp {use*search*result
+:interrupt
+   (state <s> ^superstate <ss>
+              ^epmem.result.success <q>
+              ^item <o>)
+   -->
+   (<ss> ^operator <o> + =)}

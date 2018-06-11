@@ -1,0 +1,73 @@
+epmem -e
+
+sp {propose*new-game
+   (state <s> ^io.input-link.status end)
+   -->
+   (<s> ^operator <o> +)
+   (<o> ^name new-game)}
+
+sp {apply*new-game
+   (state <s> ^operator.name new-game
+              ^io (^output-link <ol>
+                   ^input-link <il>))
+   (<il> ^round <r>
+         ^move-num <mn>)
+   -->
+   (<ol> ^command.name new-game)
+   (write (crlf) |starting a new game, round: | <r>)}
+
+sp {apply*new-game*remove
+:o-support
+   (state <s> ^io.output-link <ol>)
+   (<ol> ^command <cmd>)
+   (<cmd> ^status complete
+          ^name new-game)
+-->
+   (<ol> ^command <cmd> -)
+   (write (crlf) |removing new-game command|)}
+
+sp {propose*moves
+   (state <s> ^io.input-link (^status ok
+                              ^move-num <mn>))
+-->
+   (<s> ^operator <o1> + =
+        ^operator <o2> + =
+        ^operator <o3> + =
+        ^operator <o4> + =)
+    (<o1> ^direction left)
+    (<o2> ^direction right)
+    (<o3> ^direction up)
+    (<o4> ^direction down)}
+
+sp {apply*move
+(state <s> ^operator.direction <dir>
+           ^io (^output-link <ol>
+                ^input-link.board <b>))
+-->
+(<ol> ^command.name move
+      ^move.direction <dir>)
+(write (crlf) |moving: | <dir>)}
+
+sp {apply*move*remove
+:o-support
+(state <s> ^io.output-link <ol>)
+(<ol> ^move <move>
+      ^command <cmd>)
+(<move> ^status complete)
+(<cmd> ^status complete)
+-->
+(<ol> ^move <move> -
+      ^command <cmd> -)
+(write (crlf) |removing move command|)}
+
+sp {propose*halt
+(state <s> ^io.input-link.round <r> > 1000)
+-->
+(<s> ^operator <o> + >)
+(<o> ^name halt)}
+
+sp {apply*halt
+(state <s> ^operator.name halt)
+-->
+(write |reached max rounds, halting|)
+(halt)}
